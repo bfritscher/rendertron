@@ -7,7 +7,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      - "traefik.http.services.rendertron.loadbalancer.server.port=8080"
+      - "traefik.http.services.rendertron.loadbalancer.server.port=3000"
       - "traefik.http.routers.rendertron_secured.rule=Host(`s.j42.org`) && PathPrefix(`/rendertron`)"
       - "traefik.http.routers.rendertron.middlewares=rendertron-stripprefix"
       - "traefik.http.middlewares.rendertron-stripprefix.stripprefix.prefixes=/rendertron"
