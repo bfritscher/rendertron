@@ -16,4 +16,9 @@ services:
       - "traefik.http.routers.rendertron_secured.tls.certresolver=myresolver"
     cap_add:
       - SYS_ADMIN
-
+    networks:
+      - web
+      - default
+networks:
+  web:
+    external: true
