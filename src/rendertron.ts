@@ -1,15 +1,16 @@
-import * as Koa from 'koa';
-import * as bodyParser from 'koa-bodyparser';
-import * as koaCompress from 'koa-compress';
-import * as route from 'koa-route';
-import * as koaSend from 'koa-send';
-import * as koaLogger from 'koa-logger';
-import * as path from 'path';
-import * as puppeteer from 'puppeteer';
-import * as url from 'url';
+import * as Koa from "koa";
+import * as bodyParser from "koa-bodyparser";
+import * as koaCompress from "koa-compress";
+import * as route from "koa-route";
+import * as koaLogger from "koa-logger";
+import * as puppeteer from "puppeteer";
+import * as url from "url";
 
-import { Renderer, ScreenshotError } from './renderer';
-import { Config, ConfigManager } from './config';
+import * as cors from "@koa/cors";
+import { uuid } from "uuidv4";
+
+import { Renderer, ScreenshotError } from "./renderer";
+import { Config, ConfigManager } from "./config";
 
 /**
  * Rendertron rendering service. This runs the server which routes rendering
@@ -23,9 +24,9 @@ export class Rendertron {
   private host = process.env.HOST || this.config.host;
 
   async createRenderer(config: Config) {
-    const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+    const browser = await puppeteer.launch({ args: ["--no-sandbox"] });
 
-    browser.on('disconnected', () => {
+    browser.on("disconnected", () => {
       this.createRenderer(config);
     });
 
@@ -45,6 +46,7 @@ export class Rendertron {
 
     this.app.use(koaCompress());
 
+    /*
     this.app.use(bodyParser());
 
     this.app.use(route.get('/', async (ctx: Koa.Context) => {
@@ -70,6 +72,40 @@ export class Rendertron {
     this.app.use(route.post(
       '/screenshot/:url(.*)', this.handleScreenshotRequest.bind(this)));
 
+    */
+
+    /* BM Designer */
+
+    this.app.use(cors());
+    this.app.use(bodyParser({ enableTypes: ["json"], jsonLimit: "15mb" }));
+    const memoryCache: any = {};
+    this.app.use(
+      route.post("/print", async (ctx: Koa.Context) => {
+        const id = uuid();
+        memoryCache[id] = ctx.request.body;
+        ctx.query.width = 1920;
+        ctx.query.height = 1080;
+        ctx.request.body = { quality: 80 };
+        const url = `https://bmdesigner.com/print/${id}`;
+        console.log(url);
+        await this.handleScreenshotRequest(ctx, url);
+      })
+    );
+
+    this.app.use(
+      route.get("/bmdesignerdata/:id", (ctx: Koa.Context, id) => {
+        const data = memoryCache[id];
+        if (data) {
+          ctx.body = data;
+          delete memoryCache[id];
+        } else {
+          ctx.status = 404;
+        }
+      })
+    );
+
+    /* end */
+
     return this.app.listen(+this.port, this.host, () => {
       console.log(`Listening on port ${this.port}`);
     });
@@ -81,7 +117,7 @@ export class Rendertron {
    */
   restricted(href: string): boolean {
     const parsedUrl = url.parse(href);
-    const protocol = parsedUrl.protocol || '';
+    const protocol = parsedUrl.protocol || "";
 
     if (!protocol.match(/^https?/)) {
       return true;
@@ -92,7 +128,7 @@ export class Rendertron {
 
   async handleRenderRequest(ctx: Koa.Context, url: string) {
     if (!this.renderer) {
-      throw (new Error('No renderer initalized yet.'));
+      throw new Error("No renderer initalized yet.");
     }
 
     if (this.restricted(url)) {
@@ -100,7 +136,7 @@ export class Rendertron {
       return;
     }
 
-    const mobileVersion = 'mobile' in ctx.query ? true : false;
+    const mobileVersion = "mobile" in ctx.query ? true : false;
 
     const serialized = await this.renderer.serialize(url, mobileVersion);
 
@@ -109,16 +145,18 @@ export class Rendertron {
     }
 
     // Mark the response as coming from Rendertron.
-    ctx.set('x-renderer', 'rendertron');
+    ctx.set("x-renderer", "rendertron");
     // Add custom headers to the response like 'Location'
-    serialized.customHeaders.forEach((value: string, key: string) => ctx.set(key, value));
+    serialized.customHeaders.forEach((value: string, key: string) =>
+      ctx.set(key, value)
+    );
     ctx.status = serialized.status;
     ctx.body = serialized.content;
   }
 
   async handleScreenshotRequest(ctx: Koa.Context, url: string) {
     if (!this.renderer) {
-      throw (new Error('No renderer initalized yet.'));
+      throw new Error("No renderer initalized yet.");
     }
 
     if (this.restricted(url)) {
@@ -127,37 +165,41 @@ export class Rendertron {
     }
 
     let options = undefined;
-    if (ctx.method === 'POST' && ctx.request.body) {
+    if (ctx.method === "POST" && ctx.request.body) {
       options = ctx.request.body;
     }
 
     const dimensions = {
-      width: Number(ctx.query['width']) || this.config.width,
-      height: Number(ctx.query['height']) || this.config.height
+      width: Number(ctx.query["width"]) || this.config.width,
+      height: Number(ctx.query["height"]) || this.config.height,
     };
 
-    const mobileVersion = 'mobile' in ctx.query ? true : false;
+    const mobileVersion = "mobile" in ctx.query ? true : false;
 
     try {
       const img = await this.renderer.screenshot(
-        url, mobileVersion, dimensions, options);
+        url,
+        mobileVersion,
+        dimensions,
+        options
+      );
 
       for (const key in this.config.headers) {
         ctx.set(key, this.config.headers[key]);
       }
 
-      ctx.set('Content-Type', 'image/jpeg');
-      ctx.set('Content-Length', img.length.toString());
+      ctx.set("Content-Type", "image/jpeg");
+      ctx.set("Content-Length", img.length.toString());
       ctx.body = img;
     } catch (error) {
       const err = error as ScreenshotError;
-      ctx.status = err.type === 'Forbidden' ? 403 : 500;
+      ctx.status = err.type === "Forbidden" ? 403 : 500;
     }
   }
 }
 
 async function logUncaughtError(error: Error) {
-  console.error('Uncaught exception');
+  console.error("Uncaught exception");
   console.error(error);
   process.exit(1);
 }
@@ -166,7 +208,7 @@ async function logUncaughtError(error: Error) {
 // so we disable that linter rule for the next line
 // tslint:disable-next-line: no-any
 async function logUnhandledRejection(reason: unknown, _: Promise<any>) {
-  console.error('Unhandled rejection');
+  console.error("Unhandled rejection");
   console.error(reason);
   process.exit(1);
 }
@@ -176,6 +218,6 @@ if (!module.parent) {
   const rendertron = new Rendertron();
   rendertron.initialize();
 
-  process.on('uncaughtException', logUncaughtError);
-  process.on('unhandledRejection', logUnhandledRejection);
+  process.on("uncaughtException", logUncaughtError);
+  process.on("unhandledRejection", logUnhandledRejection);
 }

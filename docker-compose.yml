@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  rendertron:
+    restart: always
+    build: .
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.services.rendertron.loadbalancer.server.port=8080"
+      - "traefik.http.routers.rendertron_secured.rule=Host(`s.j42.org`) && PathPrefix(`/rendertron`)"
+      - "traefik.http.routers.rendertron.middlewares=rendertron-stripprefix"
+      - "traefik.http.middlewares.rendertron-stripprefix.stripprefix.prefixes=/rendertron"
+      - "traefik.http.routers.rendertron_secured.entrypoints=websecure"
+      - "traefik.http.routers.rendertron_secured.tls=true"
+      - "traefik.http.routers.rendertron_secured.tls.certresolver=myresolver"
+    cap_add:
+      - SYS_ADMIN
+

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@google-cloud/datastore": "^2.0.0",
+    "@koa/cors": "^2.2.3",
     "@webcomponents/webcomponentsjs": "^2.4.0",
     "chrome-launcher": "^0.13.0",
     "chrome-remote-interface": "^0.28.0",
@@ -38,7 +39,8 @@
     "performance-now": "^2.1.0",
     "progress-bar-element": "^2.0.0",
     "puppeteer": "^2.0.0",
-    "semver": "^7.1.0"
+    "semver": "^7.1.0",
+    "uuidv4": "^6.0.7"
   },
   "devDependencies": {
     "@types/fs-extra": "^8.1.0",
@@ -50,6 +52,7 @@
     "@types/koa-route": "^3.2.0",
     "@types/koa-send": "^4.1.0",
     "@types/koa-static": "^4.0.0",
+    "@types/koa__cors": "^3.0.1",
     "@types/node": "^12.12.0",
     "@types/puppeteer": "^2.0.0",
     "@types/supertest": "^2.0.0",
